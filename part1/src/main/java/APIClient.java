@@ -1,3 +1,4 @@
+import com.fasterxml.jackson.databind.ObjectMapper;
 import models.Purchase;
 import models.PurchaseItem;
 import okhttp3.*;
@@ -18,23 +19,24 @@ public class APIClient {
         private OkHttpClient client;
         private String postBody;
         private String url;
+        private Random r;
 
-        public APIClient(Properties properties, int storeID){
+        public APIClient(Properties properties, int storeID) throws Exception {
             this.JSON = MediaType.get("application/json; charset=utf-8");
             this.client = new OkHttpClient();
-
-            //this.postBody = this.generatePostBody(properties);
+            this.r = new Random();
+            this.postBody = this.generatePostBody(properties);
             this.url = this.generateUrl(properties, storeID);
         }
 
         public String getUrl(){return this.url;}
+        public String getPostBody(){return this.postBody;}
 
         private String generateUrl(Properties props, int storeID){
-            Random r = new Random();
             int custPerStore = Integer.parseInt(props.getProperty("custPerStore"));
             String date = props.getProperty("date");
             String url = props.getProperty("baseUrl");
-            int customerID = r.ints(storeID*1000, storeID*1000 + custPerStore).findFirst().getAsInt();
+            int customerID = this.r.ints(storeID*1000, storeID*1000 + custPerStore).findFirst().getAsInt();
             url += String.valueOf(storeID);
             url += "/customer/";
             url += String.valueOf(customerID);
@@ -44,38 +46,36 @@ public class APIClient {
         }
 
 
-        private String generatePostBody(Properties props){
+        private String generatePostBody(Properties props) throws Exception {
+            Random r = new Random();
             Purchase purchase = new Purchase();
             List<PurchaseItem> items = new ArrayList<>();
-            return "";}
+            int numPurchases = Integer.parseInt(props.getProperty("purchasePerHour"));
+            int maxItemID = Integer.parseInt(props.getProperty("maxItemId"));
+            int itemsPerPurchase = Integer.parseInt(props.getProperty("itemsPerPurchase"));
+            // Create PurchaseItem instances
+            for (int i=0; i<numPurchases; i++){
+                int itemId = this.r.ints(0, maxItemID).findFirst().getAsInt();
+                PurchaseItem item = new PurchaseItem();
+                item.setItemID(String.valueOf(itemId));
+                item.setNumberOfItems(itemsPerPurchase);
+                items.add(item);
+            }
+            purchase.setItems(items);
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.writeValueAsString(purchase);
+        }
 
 
-        String post(String url, String json) throws IOException {
-            RequestBody body = RequestBody.create(JSON, json);
+        public String post() throws IOException {
+            RequestBody body = RequestBody.create(this.JSON, this.postBody);
             Request request = new Request.Builder()
-                    .url(url)
+                    .url(this.url)
                     .post(body)
                     .build();
-            try (Response response = client.newCall(request).execute()) {
+            try (Response response = this.client.newCall(request).execute()) {
                 return response.body().string();
             }
         }
 
-        String generatePostData(){
-            JSONObject inner = new JSONObject();
-            inner.put("itemID", "5");
-            inner.put("numberOfItems", "2");
-            JSONObject outer = new JSONObject();
-            JSONObject[] in = new JSONObject[1];
-            in[0] = inner;
-            outer.put("items", in);
-           return outer.toString();
-        }
-
-    public static void main(String[] args) throws FileNotFoundException, IOException {
-//        Please example = new Please();
-//        String url = "http://localhost:8083/java_8_war_exploded/purchase/5/customer/10/date/20210202";
-//        String response = example.post(url, example.generatePostData());
-//        System.out.println(response);
-    }
 }

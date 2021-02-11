@@ -10,5 +10,7 @@ public class EntryPoint {
         props.load(input);
         APIClient client = new APIClient(props, 1);
         System.out.println(client.getUrl());
+        System.out.println(client.getPostBody());
+        System.out.println(client.post());
     }
 }
