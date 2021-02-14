@@ -2,10 +2,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import models.Purchase;
 import models.PurchaseItem;
 import okhttp3.*;
-import org.json.JSONObject;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -15,24 +13,32 @@ import java.util.Random;
 
 
 public class APIClient {
-        private MediaType JSON;
-        private OkHttpClient client;
-        private String postBody;
-        private String url;
-        private Random r;
+    /**
+     * Provides a simple way to generate/send HTTP POST requests
+     * Generates the URL from attributes in runtime.properties
+     */
+        private final MediaType JSON;
+        private final OkHttpClient client;
+        private final String postBody;
+        private final String url;
+        private final Random r;
+        private final Properties props;
 
-        public APIClient(Properties properties, int storeID) throws Exception {
+        public APIClient(int storeID) throws Exception {
+            InputStream input = new FileInputStream("src/runtime.properties");
+            this.props = new Properties();
+            this.props.load(input);
             this.JSON = MediaType.get("application/json; charset=utf-8");
             this.client = new OkHttpClient();
             this.r = new Random();
-            this.postBody = this.generatePostBody(properties);
-            this.url = this.generateUrl(properties, storeID);
+            this.postBody = this.generatePostBody();
+            this.url = this.generateUrl(storeID);
         }
 
         public String getUrl(){return this.url;}
         public String getPostBody(){return this.postBody;}
 
-        private String generateUrl(Properties props, int storeID){
+        private String generateUrl(int storeID){
             int custPerStore = Integer.parseInt(props.getProperty("custPerStore"));
             String date = props.getProperty("date");
             String url = props.getProperty("baseUrl");
@@ -46,19 +52,18 @@ public class APIClient {
         }
 
 
-        private String generatePostBody(Properties props) throws Exception {
+        private String generatePostBody() throws Exception {
             Random r = new Random();
             Purchase purchase = new Purchase();
             List<PurchaseItem> items = new ArrayList<>();
-            int numPurchases = Integer.parseInt(props.getProperty("purchasePerHour"));
             int maxItemID = Integer.parseInt(props.getProperty("maxItemId"));
             int itemsPerPurchase = Integer.parseInt(props.getProperty("itemsPerPurchase"));
             // Create PurchaseItem instances
-            for (int i=0; i<numPurchases; i++){
+            for (int i=0; i<itemsPerPurchase; i++){
                 int itemId = this.r.ints(0, maxItemID).findFirst().getAsInt();
                 PurchaseItem item = new PurchaseItem();
                 item.setItemID(String.valueOf(itemId));
-                item.setNumberOfItems(itemsPerPurchase);
+                item.setNumberOfItems(1);
                 items.add(item);
             }
             purchase.setItems(items);
@@ -66,16 +71,13 @@ public class APIClient {
             return mapper.writeValueAsString(purchase);
         }
 
-
-        public String post() throws IOException {
+        public Response post() throws IOException {
             RequestBody body = RequestBody.create(this.JSON, this.postBody);
             Request request = new Request.Builder()
                     .url(this.url)
                     .post(body)
                     .build();
-            try (Response response = this.client.newCall(request).execute()) {
-                return response.body().string();
-            }
+            Response response = this.client.newCall(request).execute();
+            return response;
         }
-
 }
