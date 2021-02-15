@@ -1,3 +1,4 @@
+import javax.xml.crypto.Data;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -86,5 +87,8 @@ public class EntryPoint {
         double wallTime = ((double)end.getTime()-(double)start.getTime())/1000.0;
         System.out.println("Wall time: " + wallTime);
         System.out.println("Throughput: " + ((double)successCounter.get() + (double)failureCounter.get())/wallTime);
+        DataRecorder recorder = DataRecorder.getInstance();
+        DataCalculator calculator = new DataCalculator(recorder.getFileName());
+        System.out.println(calculator.printData());
     }
 }
