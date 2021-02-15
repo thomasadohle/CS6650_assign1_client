@@ -1,9 +1,10 @@
+import okhttp3.OkHttpClient;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Date;
 import java.util.Properties;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class EntryPoint {
@@ -16,10 +17,10 @@ public class EntryPoint {
     }
 
     public static void main(String[] args) throws Exception{
+        OkHttpClient client = new OkHttpClient();
+        PhaseBlocker blocker = PhaseBlocker.getInstance();
         AtomicInteger successCounter = new AtomicInteger(0);
         AtomicInteger failureCounter = new AtomicInteger(0);
-        AtomicBoolean startPhaseTwo = new AtomicBoolean(false);
-        AtomicBoolean startPhaseThree = new AtomicBoolean(false);
         Properties props = getProps();
         int numStores = Integer.parseInt(props.getProperty("maxStores"));
         int hourlyPurchases = Integer.parseInt(props.getProperty("purchasePerHour"));
@@ -28,50 +29,47 @@ public class EntryPoint {
         System.out.println("Starting phase 1");
         for (int i=0; i<numStores/4; i++){
             RequestRunnable rt = new RequestRunnable(
+                    client,
                     i,
                     hourlyPurchases,
                     successCounter,
-                    failureCounter,
-                    startPhaseTwo,
-                    startPhaseThree
+                    failureCounter
             );
             Thread t = new Thread(rt);
             threads[i] = t;
             threads[i].start();
         }
-        while(! startPhaseTwo.get()){
-            synchronized(startPhaseTwo){
-                startPhaseTwo.wait();
+        while(!blocker.phaseTwo()){
+            synchronized(blocker){
+                blocker.wait();
             }
         }
         System.out.println("Starting phase 2");
         for (int j=numStores/4; j<numStores/2; j++){
             RequestRunnable rt = new RequestRunnable(
+                    client,
                     j,
                     hourlyPurchases,
                     successCounter,
-                    failureCounter,
-                    startPhaseTwo,
-                    startPhaseThree
+                    failureCounter
             );
             Thread t = new Thread(rt);
             threads[j] = t;
             threads[j].start();
         }
-        while(! startPhaseThree.get()){
-            synchronized(startPhaseThree){
-                startPhaseThree.wait();
+        while(! blocker.phaseThree()){
+            synchronized(blocker){
+                blocker.wait();
             }
         }
         System.out.println("Starting phase 3");
         for (int k=numStores/2; k<numStores; k++){
             RequestRunnable rt = new RequestRunnable(
+                    client,
                     k,
                     hourlyPurchases,
                     successCounter,
-                    failureCounter,
-                    startPhaseTwo,
-                    startPhaseThree
+                    failureCounter
             );
             Thread t = new Thread(rt);
             threads[k] = t;

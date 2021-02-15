@@ -26,12 +26,12 @@ public class APIClient {
         private final Random r;
         private final Properties props;
 
-        public APIClient(int storeID) throws Exception {
+        public APIClient(int storeID, OkHttpClient client) throws Exception {
             InputStream input = new FileInputStream("src/runtime.properties");
             this.props = new Properties();
             this.props.load(input);
             this.JSON = MediaType.get("application/json; charset=utf-8");
-            this.client = new OkHttpClient();
+            this.client = client;
             this.r = new Random();
             this.postBody = this.generatePostBody();
             this.url = this.generateUrl(storeID);

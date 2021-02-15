@@ -1,3 +1,4 @@
+import okhttp3.OkHttpClient;
 import okhttp3.Response;
 
 import java.io.IOException;
@@ -22,13 +23,14 @@ public class RequestRunnable implements Runnable {
     private final PhaseBlocker blocker = PhaseBlocker.getInstance();
 
     public RequestRunnable(
+            OkHttpClient client,
             int storeId,
             int numPurchases,
             AtomicInteger successCounter,
             AtomicInteger failureCounter
     ) throws Exception {
         this.storeId = storeId;
-        this.client = new APIClient(storeId);
+        this.client = new APIClient(storeId, client);
         this.successCounter = successCounter;
         this.failureCounter = failureCounter;
         this.numPurchases = numPurchases;

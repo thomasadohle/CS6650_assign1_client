@@ -1,3 +1,5 @@
+import okhttp3.OkHttpClient;
+
 import javax.xml.crypto.Data;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -17,6 +19,7 @@ public class EntryPoint {
     }
 
     public static void main(String[] args) throws Exception{
+        OkHttpClient client = new OkHttpClient();
         AtomicInteger successCounter = new AtomicInteger(0);
         AtomicInteger failureCounter = new AtomicInteger(0);
         PhaseBlocker blocker = PhaseBlocker.getInstance();
@@ -28,6 +31,7 @@ public class EntryPoint {
         System.out.println("Starting phase 1");
         for (int i=0; i<numStores/4; i++){
             RequestRunnable rt = new RequestRunnable(
+                    client,
                     i,
                     hourlyPurchases,
                     successCounter,
@@ -45,6 +49,7 @@ public class EntryPoint {
         System.out.println("Starting phase 2");
         for (int j=numStores/4; j<numStores/2; j++){
             RequestRunnable rt = new RequestRunnable(
+                    client,
                     j,
                     hourlyPurchases,
                     successCounter,
@@ -62,6 +67,7 @@ public class EntryPoint {
         System.out.println("Starting phase 3");
         for (int k=numStores/2; k<numStores; k++){
             RequestRunnable rt = new RequestRunnable(
+                    client,
                     k,
                     hourlyPurchases,
                     successCounter,
