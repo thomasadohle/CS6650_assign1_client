@@ -72,7 +72,4 @@ public class DataCalculator {
         DataCalculator calc = new DataCalculator("post_data_1613401702661.csv");
         System.out.println(calc.getData().size());
     }
-
-
-
 }

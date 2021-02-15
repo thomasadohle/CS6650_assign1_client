@@ -6,6 +6,8 @@ import okhttp3.*;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -73,11 +75,17 @@ public class APIClient {
 
         public Response post() throws IOException {
             RequestBody body = RequestBody.create(this.JSON, this.postBody);
+            Response response;
             Request request = new Request.Builder()
                     .url(this.url)
                     .post(body)
                     .build();
-            Response response = this.client.newCall(request).execute();
+            try{
+                response = this.client.newCall(request).execute();
+            } catch(SocketTimeoutException | SocketException ste){
+                ste.printStackTrace();
+                response = this.client.newCall(request).execute();
+            }
             response.close();
             return response;
         }

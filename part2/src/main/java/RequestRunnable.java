@@ -1,7 +1,9 @@
 import okhttp3.Response;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -15,25 +17,22 @@ public class RequestRunnable implements Runnable {
     private final AtomicInteger successCounter;
     private final AtomicInteger failureCounter;
     private final int numPurchases;
-    private final AtomicBoolean startPhaseTwo;
-    private final AtomicBoolean startPhaseThree;
     private final DataRecorder recorder = DataRecorder.getInstance();
+    private List<String[]> records;
+    private final PhaseBlocker blocker = PhaseBlocker.getInstance();
 
     public RequestRunnable(
             int storeId,
             int numPurchases,
             AtomicInteger successCounter,
-            AtomicInteger failureCounter,
-            AtomicBoolean startPhaseTwo,
-            AtomicBoolean startPhaseThree
+            AtomicInteger failureCounter
     ) throws Exception {
         this.storeId = storeId;
         this.client = new APIClient(storeId);
         this.successCounter = successCounter;
         this.failureCounter = failureCounter;
         this.numPurchases = numPurchases;
-        this.startPhaseTwo = startPhaseTwo;
-        this.startPhaseThree = startPhaseThree;
+        this.records = new ArrayList<>();
     }
 
     @Override
@@ -42,22 +41,21 @@ public class RequestRunnable implements Runnable {
             this.executePost();
         }
         // Alert Main thread to start Phase 2
-        this.startPhaseTwo.set(true);
-        synchronized(startPhaseTwo){
-            startPhaseTwo.notify();
+        synchronized(blocker){
+            blocker.startPhaseTwo();
         }
 
         for (int j=numPurchases*3; j<numPurchases*5; j++){
             this.executePost();
         }
         // Alert Main thread to start Phase 3
-        this.startPhaseThree.set(true);
-        synchronized(startPhaseThree){
-            startPhaseThree.notify();
+        synchronized(blocker){
+            blocker.startPhaseThree();
         }
         for (int k=numPurchases*5; k<numPurchases*9; k++){
             this.executePost();
         }
+        this.recorder.writeRecords(this.records);
 
     }
 
@@ -84,7 +82,19 @@ public class RequestRunnable implements Runnable {
             end = new Date();
             respCode = 500;
         }
-        this.recorder.writeRecord(start, end, respCode);
+        String[] record = this.generateRecord(start, end, respCode);
+        this.records.add(record);
     }
+
+    private String[] generateRecord(Date start, Date end, int respCode){
+        long latency = end.getTime() - start.getTime();
+        String[] dataArr = new String[4];
+        dataArr[0] = String.valueOf(start.getTime());
+        dataArr[1] = "POST";
+        dataArr[2] = String.valueOf(latency);
+        dataArr[3] = String.valueOf(respCode);
+        return dataArr;
+    }
+
 
 }
